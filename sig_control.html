@@ -1912,7 +1912,11 @@ function loadFromURL(url) {
     .then(function(buffer) {
       try {
         // Usar EXACTAMENTE el mismo procesamiento que la importacion manual
-        var wb  = XLSX.read(new Uint8Array(buffer), {type:'array', cellDates:true});
+        // Convertir a binary string igual que FileReader (mismo método que importación manual)
+        var bytes = new Uint8Array(buffer);
+        var bstr  = '';
+        for (var b = 0; b < bytes.byteLength; b++) { bstr += String.fromCharCode(bytes[b]); }
+        var wb  = XLSX.read(bstr, {type:'binary', cellDates:true});
         var ws  = wb.Sheets[wb.SheetNames[0]];
         var raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
 
