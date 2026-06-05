@@ -1960,8 +1960,7 @@ function loadFromURL(url) {
           if (ts) ts.textContent = 'Sin datos'; return;
         }
         if (ts) ts.textContent = 'Actualizado: ' + new Date().toLocaleString('es-PE');
-        activeYears = [];
-        renderDash();
+        quickYear('TODOS');
         showToast('success', DB.length + ' proyectos cargados correctamente.');
       } catch(e) {
         if (banner) banner.style.display = 'none';
@@ -1990,7 +1989,7 @@ function showLoadError(msg) {
 // Arranque
 (function() {
   DB = [];
-  activeYears = [];
+  activeYears = ['TODOS'];
   renderDash();
   loadFromURL(EXCEL_URL);
 })();
