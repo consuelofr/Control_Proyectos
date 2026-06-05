@@ -1965,13 +1965,13 @@ function loadFromURL(url) {
       } catch(e) {
         if (banner) banner.style.display = 'none';
         showLoadError('Error al procesar: ' + e.message);
-        if (ts) ts.textContent = 'Error'; console.error(e);
+        if (ts) ts.textContent = 'Carga fallida'; console.error(e);
       }
     })
     .catch(function(e) {
       if (banner) banner.style.display = 'none';
       showLoadError('Error de red: ' + (e.message||e) + '. Verifica conexion o carga manualmente.');
-      if (ts) ts.textContent = 'Sin conexion';
+      if (ts) ts.textContent = 'Sin conexion al servidor';
       console.error('fetch error:', e);
     });
 }
@@ -1990,7 +1990,7 @@ function showLoadError(msg) {
 (function() {
   DB = [];
   activeYears = ['TODOS'];
-  renderDash();
+  // No renderizar con DB vacío — solo iniciar carga
   loadFromURL(EXCEL_URL);
 })();
 
