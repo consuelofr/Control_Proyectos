@@ -1962,15 +1962,26 @@ function loadFromURL(url) {
           showToast('success', DB.length + ' proyectos cargados correctamente.');
         } catch(parseErr) {
           if (banner) banner.style.display = 'none';
-          showLoadError('Error al procesar el archivo: ' + parseErr.message);
-          if (ts) ts.textContent = 'Carga fallida';
           console.error('parse error:', parseErr);
+          // Si los datos ya cargaron, no mostrar error en UI
+          if (DB.length > 0) {
+            if (ts) ts.textContent = 'Actualizado: ' + new Date().toLocaleString('es-PE');
+            quickYear('TODOS');
+          } else {
+            showLoadError('Error al procesar: ' + parseErr.message);
+            if (ts) ts.textContent = 'Error al cargar';
+          }
         }
       };
       reader.onerror = function() {
         if (banner) banner.style.display = 'none';
-        showLoadError('Error al leer el archivo descargado.');
-        if (ts) ts.textContent = 'Carga fallida';
+        if (DB.length > 0) {
+          if (ts) ts.textContent = 'Actualizado: ' + new Date().toLocaleString('es-PE');
+          quickYear('TODOS');
+        } else {
+          showLoadError('Error al leer el archivo descargado.');
+          if (ts) ts.textContent = 'Error al cargar';
+        }
       };
       reader.readAsBinaryString(blob);
     })
