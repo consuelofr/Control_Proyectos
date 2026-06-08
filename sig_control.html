@@ -1907,76 +1907,78 @@ function loadFromURL(url) {
       if (!resp.ok) throw new Error('HTTP ' + resp.status +
         (resp.status === 404 ? ' - Archivo no encontrado.' :
          resp.status === 403 ? ' - Acceso denegado.' : ''));
-      return resp.arrayBuffer();
+      return resp.blob();
     })
-    .then(function(buffer) {
-      try {
-        // Usar EXACTAMENTE el mismo procesamiento que la importacion manual
-        // Convertir a binary string igual que FileReader (mismo método que importación manual)
-        var bytes = new Uint8Array(buffer);
-        var bstr  = '';
-        for (var b = 0; b < bytes.byteLength; b++) { bstr += String.fromCharCode(bytes[b]); }
-        var wb  = XLSX.read(bstr, {type:'binary', cellDates:true});
-        var ws  = wb.Sheets[wb.SheetNames[0]];
-        var raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-
-        // Mismo filtro que processFile
-        var INVALID = /^(estatus|leyenda|cerrado|total|subtotal|nota|observ)/i;
-        var dataRows = [];
-        for (var i = 3; i < raw.length; i++) {
-          var r   = raw[i];
-          var nro = String(r[1]||'').trim();
-          var nom = String(r[2]||'').trim();
-          if (nro && nom && !INVALID.test(nom) && !INVALID.test(nro)) {
-            dataRows.push(r);
+    .then(function(blob) {
+      // Usar FileReader igual que la importacion manual
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var bstr = e.target.result;
+          var wb   = XLSX.read(bstr, {type:'binary', cellDates:true});
+          var ws   = wb.Sheets[wb.SheetNames[0]];
+          var raw  = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+          var INVALID = /^(estatus|leyenda|cerrado|total|subtotal|nota|observ)/i;
+          var dataRows = [];
+          for (var i = 3; i < raw.length; i++) {
+            var r   = raw[i];
+            var nro = String(r[1]||'').trim();
+            var nom = String(r[2]||'').trim();
+            if (nro && nom && !INVALID.test(nom) && !INVALID.test(nro)) {
+              dataRows.push(r);
+            }
           }
-        }
-
-        // Mismo procesamiento que confirmImport
-        DB = [];
-        dataRows.forEach(function(r) {
-          var et  = String(r[5]||'').trim();
-          var etN = ETAPA_MAP[et.toLowerCase()]||et.toUpperCase()||'';
-          var ano = parseInt(r[0])||null;
-          var nom2= String(r[2]||'').trim();
-          if (!nom2 || !ano) return;
-          DB.push({
-            ano: ano, numero: String(r[1]||'').trim(), nombre: nom2,
-            sgc:        String(r[3]||'').trim().replace(/[-\u2013]/g,'').trim(),
-            alcance:    String(r[4]||'').trim(),
-            etapa:      etN,
-            fechaCierre:r[6] ? String(r[6]) : '',
-            responsable:String(r[7]||'').replace(/\n/g,' / ').trim(),
-            equipo:     String(r[8]||'').replace(/\n/g,' / ').trim(),
-            ficha:    normEst(r[9]),  acs:      normEst(r[10]),
-            servidor: normEst(r[11]), ccp:      normEst(r[12]),
-            epsp:     normEst(r[13]), la:       normEst(r[14]),
-            ra:       normEst(r[15]), aro:      normEst(r[16]),
-            esc:      normEst(r[17]), dd:       normEst(r[18]),
-            comentarios: String(r[19]||'').trim(),
-            fechaSeg:    String(r[20]||'').trim()
+          DB = [];
+          dataRows.forEach(function(r) {
+            var et   = String(r[5]||'').trim();
+            var etN  = ETAPA_MAP[et.toLowerCase()]||et.toUpperCase()||'';
+            var ano  = parseInt(r[0])||null;
+            var nom2 = String(r[2]||'').trim();
+            if (!nom2 || !ano) return;
+            DB.push({
+              ano: ano, numero: String(r[1]||'').trim(), nombre: nom2,
+              sgc:        String(r[3]||'').trim().replace(/[-\u2013]/g,'').trim(),
+              alcance:    String(r[4]||'').trim(),
+              etapa:      etN,
+              fechaCierre:r[6] ? String(r[6]) : '',
+              responsable:String(r[7]||'').replace(/\n/g,' / ').trim(),
+              equipo:     String(r[8]||'').replace(/\n/g,' / ').trim(),
+              ficha:    normEst(r[9]),  acs:      normEst(r[10]),
+              servidor: normEst(r[11]), ccp:      normEst(r[12]),
+              epsp:     normEst(r[13]), la:       normEst(r[14]),
+              ra:       normEst(r[15]), aro:      normEst(r[16]),
+              esc:      normEst(r[17]), dd:       normEst(r[18]),
+              comentarios: String(r[19]||'').trim(),
+              fechaSeg:    String(r[20]||'').trim()
+            });
           });
-        });
-
-        if (banner) banner.style.display = 'none';
-        if (DB.length === 0) {
-          showLoadError('No se encontraron proyectos en el archivo.');
-          if (ts) ts.textContent = 'Sin datos'; return;
+          if (banner) banner.style.display = 'none';
+          if (DB.length === 0) {
+            showLoadError('No se encontraron proyectos en el archivo.');
+            if (ts) ts.textContent = 'Sin datos'; return;
+          }
+          if (ts) ts.textContent = 'Actualizado: ' + new Date().toLocaleString('es-PE');
+          quickYear('TODOS');
+          showToast('success', DB.length + ' proyectos cargados correctamente.');
+        } catch(parseErr) {
+          if (banner) banner.style.display = 'none';
+          showLoadError('Error al procesar el archivo: ' + parseErr.message);
+          if (ts) ts.textContent = 'Carga fallida';
+          console.error('parse error:', parseErr);
         }
-        if (ts) ts.textContent = 'Actualizado: ' + new Date().toLocaleString('es-PE');
-        quickYear('TODOS');
-        showToast('success', DB.length + ' proyectos cargados correctamente.');
-      } catch(e) {
+      };
+      reader.onerror = function() {
         if (banner) banner.style.display = 'none';
-        showLoadError('Error al procesar: ' + e.message);
-        if (ts) ts.textContent = 'Carga fallida'; console.error(e);
-      }
+        showLoadError('Error al leer el archivo descargado.');
+        if (ts) ts.textContent = 'Carga fallida';
+      };
+      reader.readAsBinaryString(blob);
     })
-    .catch(function(e) {
+    .catch(function(fetchErr) {
       if (banner) banner.style.display = 'none';
-      showLoadError('Error de red: ' + (e.message||e) + '. Verifica conexion o carga manualmente.');
-      if (ts) ts.textContent = 'Sin conexion al servidor';
-      console.error('fetch error:', e);
+      showLoadError('No se pudo descargar el archivo: ' + (fetchErr.message||fetchErr));
+      if (ts) ts.textContent = 'Sin conexion';
+      console.error('fetch error:', fetchErr);
     });
 }
 
